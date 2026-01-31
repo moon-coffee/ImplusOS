@@ -1,0 +1,367 @@
+#include <efi.h>
+#include <efilib.h>
+#include <stdint.h>
+
+/* ===================== マクロ ===================== */
+
+#define CHECK(st, msg) \
+    if (EFI_ERROR(st)) { Print(L"%s: %r\n", msg, st); return st; }
+
+#define EI_NIDENT 16
+#define PT_LOAD   1
+
+/* ===================== BootInfo ===================== */
+
+typedef struct {
+    EFI_MEMORY_DESCRIPTOR *MemoryMap;
+    UINTN MemoryMapSize;
+    UINTN MemoryMapDescriptorSize;
+    UINT32 MemoryMapDescriptorVersion;
+
+    /* FrameBuffer */
+    UINT64 FrameBufferBase;
+    UINT32 FrameBufferSize;
+    UINT32 HorizontalResolution;
+    UINT32 VerticalResolution;
+    UINT32 PixelsPerScanLine;
+} BOOT_INFO;
+
+/* ===================== ELF 定義 ===================== */
+
+typedef struct {
+    unsigned char e_ident[EI_NIDENT];
+    uint16_t e_type;
+    uint16_t e_machine;
+    uint32_t e_version;
+    uint64_t e_entry;
+    uint64_t e_phoff;
+    uint64_t e_shoff;
+    uint32_t e_flags;
+    uint16_t e_ehsize;
+    uint16_t e_phentsize;
+    uint16_t e_phnum;
+    uint16_t e_shentsize;
+    uint16_t e_shnum;
+    uint16_t e_shstrndx;
+} Elf64_Ehdr;
+
+typedef struct {
+    uint32_t p_type;
+    uint32_t p_flags;
+    uint64_t p_offset;
+    uint64_t p_vaddr;
+    uint64_t p_paddr;
+    uint64_t p_filesz;
+    uint64_t p_memsz;
+    uint64_t p_align;
+} Elf64_Phdr;
+
+/* ===================== ファイル読み込み ===================== */
+
+EFI_STATUS LoadFileToMemory(
+    EFI_SYSTEM_TABLE *ST,
+    EFI_FILE_PROTOCOL *File,
+    VOID **Buffer,
+    UINTN *Size
+)
+{
+    EFI_STATUS Status;
+    EFI_FILE_INFO *Info;
+    UINTN InfoSize = sizeof(EFI_FILE_INFO) + 256;
+
+    Status = uefi_call_wrapper(
+        ST->BootServices->AllocatePool,
+        3,
+        EfiLoaderData,
+        InfoSize,
+        (VOID**)&Info
+    );
+    if (EFI_ERROR(Status))
+        return Status;
+
+    Status = uefi_call_wrapper(
+        File->GetInfo,
+        4,
+        File,
+        &gEfiFileInfoGuid,
+        &InfoSize,
+        Info
+    );
+    if (EFI_ERROR(Status))
+        return Status;
+
+    *Size = Info->FileSize;
+
+    Status = uefi_call_wrapper(
+        ST->BootServices->AllocatePool,
+        3,
+        EfiLoaderData,
+        *Size,
+        Buffer
+    );
+    if (EFI_ERROR(Status))
+        return Status;
+
+    Status = uefi_call_wrapper(
+        File->Read,
+        3,
+        File,
+        Size,
+        *Buffer
+    );
+
+    return Status;
+}
+
+/* ===================== ELF Kernel Loader ===================== */
+
+EFI_STATUS LoadKernelELF(
+    EFI_SYSTEM_TABLE *ST,
+    VOID *KernelImage,
+    UINT64 *EntryPoint
+)
+{
+    Elf64_Ehdr *Ehdr = (Elf64_Ehdr*)KernelImage;
+
+    if (Ehdr->e_ident[0] != 0x7F ||
+        Ehdr->e_ident[1] != 'E'  ||
+        Ehdr->e_ident[2] != 'L'  ||
+        Ehdr->e_ident[3] != 'F')
+        return EFI_LOAD_ERROR;
+
+    Elf64_Phdr *Phdrs =
+        (Elf64_Phdr*)((UINT8*)KernelImage + Ehdr->e_phoff);
+
+    for (UINTN i = 0; i < Ehdr->e_phnum; i++) {
+        Elf64_Phdr *Ph = &Phdrs[i];
+        if (Ph->p_type != PT_LOAD)
+            continue;
+
+        EFI_PHYSICAL_ADDRESS Addr =
+            (EFI_PHYSICAL_ADDRESS)Ph->p_paddr;
+
+        UINTN Pages =
+            EFI_SIZE_TO_PAGES(Ph->p_memsz);
+
+        EFI_STATUS Status = uefi_call_wrapper(
+            ST->BootServices->AllocatePages,
+            4,
+            AllocateAddress,
+            EfiLoaderData,
+            Pages,
+            &Addr
+        );
+        if (EFI_ERROR(Status))
+            return Status;
+
+        CopyMem(
+            (VOID*)Ph->p_paddr,
+            (UINT8*)KernelImage + Ph->p_offset,
+            Ph->p_filesz
+        );
+
+        SetMem(
+            (VOID*)(Ph->p_paddr + Ph->p_filesz),
+            Ph->p_memsz - Ph->p_filesz,
+            0
+        );
+    }
+
+    *EntryPoint = Ehdr->e_entry;
+    return EFI_SUCCESS;
+}
+
+/* ===================== ExitBootServices 完全版 ===================== */
+
+EFI_STATUS ExitBootServicesComplete(
+    EFI_HANDLE ImageHandle,
+    EFI_SYSTEM_TABLE *ST,
+    BOOT_INFO *BootInfo
+)
+{
+    EFI_STATUS Status;
+    UINTN MapKey;
+    UINTN BufferSize;
+
+    while (1) {
+        BufferSize = 0;
+        Status = uefi_call_wrapper(
+            ST->BootServices->GetMemoryMap,
+            5,
+            &BufferSize,
+            NULL,
+            &MapKey,
+            &BootInfo->MemoryMapDescriptorSize,
+            &BootInfo->MemoryMapDescriptorVersion
+        );
+
+        if (Status != EFI_BUFFER_TOO_SMALL)
+            return Status;
+
+        BufferSize +=
+            BootInfo->MemoryMapDescriptorSize * 8;
+
+        Status = uefi_call_wrapper(
+            ST->BootServices->AllocatePool,
+            3,
+            EfiLoaderData,
+            BufferSize,
+            (VOID**)&BootInfo->MemoryMap
+        );
+        if (EFI_ERROR(Status))
+            return Status;
+
+        Status = uefi_call_wrapper(
+            ST->BootServices->GetMemoryMap,
+            5,
+            &BufferSize,
+            BootInfo->MemoryMap,
+            &MapKey,
+            &BootInfo->MemoryMapDescriptorSize,
+            &BootInfo->MemoryMapDescriptorVersion
+        );
+        if (EFI_ERROR(Status))
+            return Status;
+
+        BootInfo->MemoryMapSize = BufferSize;
+
+        Status = uefi_call_wrapper(
+            ST->BootServices->ExitBootServices,
+            2,
+            ImageHandle,
+            MapKey
+        );
+
+        if (Status == EFI_SUCCESS)
+            break;
+
+        uefi_call_wrapper(
+            ST->BootServices->FreePool,
+            1,
+            BootInfo->MemoryMap
+        );
+    }
+
+    return EFI_SUCCESS;
+}
+
+/* ===================== エントリ ===================== */
+
+typedef void (*KernelEntryFn)(BOOT_INFO*);
+
+EFI_STATUS EFIAPI efi_main(
+    EFI_HANDLE ImageHandle,
+    EFI_SYSTEM_TABLE *ST
+)
+{
+    InitializeLib(ImageHandle, ST);
+
+    EFI_STATUS Status;
+    EFI_LOADED_IMAGE_PROTOCOL *LoadedImage;
+    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs;
+    EFI_FILE_PROTOCOL *Root;
+    EFI_FILE_PROTOCOL *KernelFile;
+    EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop;
+
+    VOID *KernelBuffer;
+    UINTN KernelSize;
+    UINT64 KernelEntry;
+
+    BOOT_INFO BootInfo = {0};
+
+    Print(L"[LOADER] start\n");
+
+    /* LoadedImage */
+    Status = uefi_call_wrapper(
+        ST->BootServices->HandleProtocol,
+        3,
+        ImageHandle,
+        &gEfiLoadedImageProtocolGuid,
+        (VOID**)&LoadedImage
+    );
+    CHECK(Status, L"LoadedImage");
+
+    /* FileSystem */
+    Status = uefi_call_wrapper(
+        ST->BootServices->HandleProtocol,
+        3,
+        LoadedImage->DeviceHandle,
+        &gEfiSimpleFileSystemProtocolGuid,
+        (VOID**)&Fs
+    );
+    CHECK(Status, L"SimpleFS");
+
+    Status = uefi_call_wrapper(
+        Fs->OpenVolume,
+        2,
+        Fs,
+        &Root
+    );
+    CHECK(Status, L"OpenVolume");
+
+    /* GOP */
+    Status = uefi_call_wrapper(
+        ST->BootServices->LocateProtocol,
+        3,
+        &gEfiGraphicsOutputProtocolGuid,
+        NULL,
+        (VOID**)&Gop
+    );
+    CHECK(Status, L"GOP");
+
+    BootInfo.FrameBufferBase =
+        Gop->Mode->FrameBufferBase;
+    BootInfo.FrameBufferSize =
+        (UINT32)Gop->Mode->FrameBufferSize;
+    BootInfo.HorizontalResolution =
+        Gop->Mode->Info->HorizontalResolution;
+    BootInfo.VerticalResolution =
+        Gop->Mode->Info->VerticalResolution;
+    BootInfo.PixelsPerScanLine =
+        Gop->Mode->Info->PixelsPerScanLine;
+
+    /* Kernel ELF */
+    Status = uefi_call_wrapper(
+        Root->Open,
+        5,
+        Root,
+        &KernelFile,
+        L"\\EFI\\BOOT\\Kernel_Main.ELF",
+        EFI_FILE_MODE_READ,
+        0
+    );
+    CHECK(Status, L"Open Kernel");
+
+    Status = LoadFileToMemory(
+        ST,
+        KernelFile,
+        &KernelBuffer,
+        &KernelSize
+    );
+    CHECK(Status, L"Read Kernel");
+
+    Status = LoadKernelELF(
+        ST,
+        KernelBuffer,
+        &KernelEntry
+    );
+    CHECK(Status, L"ELF Load");
+
+    Print(L"[LOADER] Jumping to kernel\n");
+
+    Status = ExitBootServicesComplete(
+        ImageHandle,
+        ST,
+        &BootInfo
+    );
+
+    if (EFI_ERROR(Status))
+        while (1);
+
+    KernelEntryFn Entry =
+        (KernelEntryFn)KernelEntry;
+
+    Entry(&BootInfo);
+
+    while (1);
+}

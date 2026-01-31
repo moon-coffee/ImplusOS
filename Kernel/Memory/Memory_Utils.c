@@ -1,0 +1,10 @@
+// Kernel/Memory/Memory_Utils.c
+#include <stddef.h>
+#include <stdint.h>
+
+void *memset(void *ptr, int value, size_t num) {
+    unsigned char *p = (unsigned char*)ptr;
+    for (size_t i = 0; i < num; i++)
+        p[i] = (unsigned char)value;
+    return ptr;
+}
