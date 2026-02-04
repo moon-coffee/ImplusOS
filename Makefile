@@ -22,13 +22,8 @@ KERNEL_OBJS := \
     $(BUILD_DIR)/Other_Utils.o \
     $(BUILD_DIR)/Paging_Main.o \
     $(BUILD_DIR)/Paging_ASM.o \
-    $(BUILD_DIR)/FrameBuffer_Main.o \
-    $(BUILD_DIR)/FrameBuffer_Cursor.o \
-    $(BUILD_DIR)/Font_Main.o \
     $(BUILD_DIR)/IDT_Main.o \
     $(BUILD_DIR)/idt_load.o \
-    $(BUILD_DIR)/WindowManager_Main.o \
-    $(BUILD_DIR)/Mouse_Main.o \
     $(BUILD_DIR)/IO_Main.o \
     $(BUILD_DIR)/FAT32_Main.o
 
@@ -81,27 +76,7 @@ $(BUILD_DIR)/Paging_Main.o: Kernel/Paging/Paging_Main.c
 	mkdir -p $(BUILD_DIR)
 	$(KCC) $(KERNEL_CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/FrameBuffer_Main.o: Kernel/FrameBuffer/FrameBuffer_Main.c
-	mkdir -p $(BUILD_DIR)
-	$(KCC) $(KERNEL_CFLAGS) -c $< -o $@
-
-$(BUILD_DIR)/FrameBuffer_Cursor.o: Kernel/FrameBuffer/FrameBuffer_Cursor.c
-	mkdir -p $(BUILD_DIR)
-	$(KCC) $(KERNEL_CFLAGS) -c $< -o $@
-
-$(BUILD_DIR)/Font_Main.o: Kernel/Font/Font_Main.c
-	mkdir -p $(BUILD_DIR)
-	$(KCC) $(KERNEL_CFLAGS) -DSTB_TRUETYPE_IMPLEMENTATION -c $< -o $@
-
 $(BUILD_DIR)/IDT_Main.o: Kernel/IDT/IDT_Main.c
-	mkdir -p $(BUILD_DIR)
-	$(KCC) $(KERNEL_CFLAGS) -c $< -o $@
-
-$(BUILD_DIR)/WindowManager_Main.o: Kernel/WindowManager/WindowManager_Main.c
-	mkdir -p $(BUILD_DIR)
-	$(KCC) $(KERNEL_CFLAGS) -c $< -o $@
-
-$(BUILD_DIR)/Mouse_Main.o: Kernel/Mouse/Mouse_Main.c
 	mkdir -p $(BUILD_DIR)
 	$(KCC) $(KERNEL_CFLAGS) -c $< -o $@
 
@@ -110,10 +85,6 @@ $(BUILD_DIR)/IO_Main.o: Kernel/IO/IO_Main.c
 	$(KCC) $(KERNEL_CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/FAT32_Main.o: Kernel/Drivers/FileSystem/FAT32/FAT32_Main.c
-	mkdir -p $(BUILD_DIR)
-	$(KCC) $(KERNEL_CFLAGS) -c $< -o $@
-
-$(BUILD_DIR)/stb_wrapper.o: Kernel/ThirdParty/stb_wrapper.c
 	mkdir -p $(BUILD_DIR)
 	$(KCC) $(KERNEL_CFLAGS) -c $< -o $@
 

@@ -12,6 +12,15 @@
 
 /* ===================== BootInfo ===================== */
 
+typedef uint64_t EFI_PHYSICAL_ADDRESS;
+
+#define MAX_LOADED_FILES 8
+
+typedef struct {
+    EFI_PHYSICAL_ADDRESS PhysAddr;
+    uint64_t Size;
+} LOADED_FILE;
+
 typedef struct {
     EFI_MEMORY_DESCRIPTOR *MemoryMap;
     UINTN MemoryMapSize;
@@ -19,11 +28,15 @@ typedef struct {
     UINT32 MemoryMapDescriptorVersion;
 
     /* FrameBuffer */
-    UINT64 FrameBufferBase;
+    uint64_t FrameBufferBase;
     UINT32 FrameBufferSize;
     UINT32 HorizontalResolution;
     UINT32 VerticalResolution;
     UINT32 PixelsPerScanLine;
+
+    /* Loaded files */
+    UINTN LoadedFileCount;
+    LOADED_FILE LoadedFiles[MAX_LOADED_FILES];
 } BOOT_INFO;
 
 /* ===================== ELF 定義 ===================== */

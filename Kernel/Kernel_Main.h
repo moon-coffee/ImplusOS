@@ -7,6 +7,10 @@
 typedef uint64_t UINTN;
 typedef uint32_t UINT32;
 
+typedef uint64_t EFI_PHYSICAL_ADDRESS;
+
+#define MAX_LOADED_FILES 8
+
 typedef struct {
     UINT32 Type;
     UINT32 Pad;
@@ -17,17 +21,28 @@ typedef struct {
 } EFI_MEMORY_DESCRIPTOR;
 
 typedef struct {
+    EFI_PHYSICAL_ADDRESS PhysAddr;
+    uint64_t Size;
+} LOADED_FILE;
+
+typedef struct {
     EFI_MEMORY_DESCRIPTOR *MemoryMap;
     UINTN MemoryMapSize;
     UINTN MemoryMapDescriptorSize;
     UINT32 MemoryMapDescriptorVersion;
 
+    /* FrameBuffer */
     uint64_t FrameBufferBase;
-    uint32_t FrameBufferSize;
-    uint32_t HorizontalResolution;
-    uint32_t VerticalResolution;
-    uint32_t PixelsPerScanLine;
+    UINT32 FrameBufferSize;
+    UINT32 HorizontalResolution;
+    UINT32 VerticalResolution;
+    UINT32 PixelsPerScanLine;
+
+    /* Loaded files */
+    UINTN LoadedFileCount;
+    LOADED_FILE LoadedFiles[MAX_LOADED_FILES];
 } BOOT_INFO;
+
 
 __attribute__((noreturn))
 void kernel_main(BOOT_INFO *boot_info);

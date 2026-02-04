@@ -1,6 +1,0 @@
-// Font_StbTruetype.c
-#include "stb_truetype.h"
-
-#define STB_TRUETYPE_IMPLEMENTATION
-#define STBTT_ASSERT(x) ((void)0)  // assert を無効化
-#include "stb_truetype.h"
