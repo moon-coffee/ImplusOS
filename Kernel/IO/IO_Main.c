@@ -46,41 +46,50 @@ static inline void insw(uint16_t port, void* addr, int count){
 
 
 bool disk_read(uint32_t lba, uint8_t *buffer, uint32_t sectors){
-    uint32_t real_lba = FAT32_START_LBA + lba;
+    if (sectors == 0) return false;
 
-    outb(ATA_HDDEVSEL, 0xE0 | ((real_lba >> 24) & 0x0F));
-    outb(ATA_SECCOUNT, 1);
-    outb(ATA_LBA0, real_lba & 0xFF);
-    outb(ATA_LBA1, (real_lba >> 8) & 0xFF);
-    outb(ATA_LBA2, (real_lba >> 16) & 0xFF);
-    outb(ATA_COMMAND, ATA_CMD_READ);
+    for (uint32_t s = 0; s < sectors; s++) {
+        uint32_t real_lba = FAT32_START_LBA + lba + s;
 
-    // BSY解除待ち
-    while (inb(ATA_STATUS) & ATA_SR_BSY);
+        outb(ATA_HDDEVSEL, 0xE0 | ((real_lba >> 24) & 0x0F));
+        outb(ATA_SECCOUNT, 1);
+        outb(ATA_LBA0, real_lba & 0xFF);
+        outb(ATA_LBA1, (real_lba >> 8) & 0xFF);
+        outb(ATA_LBA2, (real_lba >> 16) & 0xFF);
+        outb(ATA_COMMAND, ATA_CMD_READ);
 
-    // DRQ待ち
-    uint8_t status;
-    do {
-        status = inb(ATA_STATUS);
-        if (status & ATA_SR_ERR) return false;
-    } while (!(status & ATA_SR_DRQ));
+        // BSY解除待ち
+        while (inb(ATA_STATUS) & ATA_SR_BSY);
 
-    // 512 bytes 読み込み
-    insw(ATA_DATA, buffer, 256);
+        // DRQ待ち
+        uint8_t status;
+        do {
+            status = inb(ATA_STATUS);
+            if (status & ATA_SR_ERR) return false;
+        } while (!(status & ATA_SR_DRQ));
+
+        // 512 bytes 読み込み
+        insw(ATA_DATA, buffer, 256);
+        buffer += 512;
+    }
     return true;
 }
 
 bool disk_write(uint32_t lba, const uint8_t *buffer, uint32_t sectors){
-    outb(ATA_HDDEVSEL, 0xE0 | ((lba>>24)&0x0F));
-    outb(ATA_SECCOUNT, sectors);
-    outb(ATA_LBA0, lba & 0xFF);
-    outb(ATA_LBA1, (lba>>8) & 0xFF);
-    outb(ATA_LBA2, (lba>>16) & 0xFF);
-    outb(ATA_COMMAND, 0x30); // WRITE SECTORS
+    if (sectors == 0) return false;
 
-    for(uint32_t s=0; s<sectors; s++){
-        while(inb(ATA_STATUS) & 0x80);
-        while(!(inb(ATA_STATUS) & 0x08));
+    for (uint32_t s = 0; s < sectors; s++) {
+        uint32_t real_lba = FAT32_START_LBA + lba + s;
+
+        outb(ATA_HDDEVSEL, 0xE0 | ((real_lba >> 24) & 0x0F));
+        outb(ATA_SECCOUNT, 1);
+        outb(ATA_LBA0, real_lba & 0xFF);
+        outb(ATA_LBA1, (real_lba >> 8) & 0xFF);
+        outb(ATA_LBA2, (real_lba >> 16) & 0xFF);
+        outb(ATA_COMMAND, 0x30); // WRITE SECTORS
+
+        while(inb(ATA_STATUS) & ATA_SR_BSY);
+        while(!(inb(ATA_STATUS) & ATA_SR_DRQ));
         outsw(ATA_DATA, buffer, 256);
         buffer += 512;
     }

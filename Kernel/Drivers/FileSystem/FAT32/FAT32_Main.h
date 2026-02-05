@@ -21,7 +21,7 @@ typedef struct {
 
 // FAT32ファイル情報
 typedef struct {
-    char name[11];
+    char name[12];
     uint32_t first_cluster;
     uint32_t size;
 } FAT32_FILE;

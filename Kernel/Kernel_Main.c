@@ -18,7 +18,7 @@ void serial_init(void) {
 }
 
 void serial_write_char(char c) {
-    while ((inb(COM1_PORT + 5) & 0x20) == 0); // Wait for TX empty
+    while ((inb(COM1_PORT + 5) & 0x20) == 0);
     outb(COM1_PORT, c);
 }
 
@@ -47,24 +47,32 @@ void serial_write_uint16(uint16_t value) {
     serial_write_uint64((uint64_t)value);
 }
 
+void all_fs_initialize() {
+    if (fat32_init()) {
+        serial_write_string("FAT32 OK\n");
+    }
+    //必要に応じて別FSのinit追加
+}
+
 __attribute__((noreturn))
-void kernel_main(BOOT_INFO *boot_info){
-    fat32_list_root_files();
+void kernel_main(BOOT_INFO *boot_info) {
+
+    serial_init();
+
     init_physical_memory(
         boot_info->MemoryMap,
         boot_info->MemoryMapSize,
         boot_info->MemoryMapDescriptorSize
     );
-    memory_init();
-    init_paging();
-    init_idt();
-    
-    int fat32_ok = 0;
-    if(fat32_init()){
-        fat32_ok = 1;
-    }
 
-    while(1) {
+    init_paging();
+
+    memory_init();
+    init_idt();
+
+    all_fs_initialize();
+
+    while (1) {
         __asm__("hlt");
     }
 }

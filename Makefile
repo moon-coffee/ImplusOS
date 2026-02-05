@@ -23,7 +23,7 @@ KERNEL_OBJS := \
     $(BUILD_DIR)/Paging_Main.o \
     $(BUILD_DIR)/Paging_ASM.o \
     $(BUILD_DIR)/IDT_Main.o \
-    $(BUILD_DIR)/idt_load.o \
+    $(BUILD_DIR)/IDT.o \
     $(BUILD_DIR)/IO_Main.o \
     $(BUILD_DIR)/FAT32_Main.o
 
@@ -93,7 +93,7 @@ $(BUILD_DIR)/Paging_ASM.o: Kernel/Paging/Paging.asm
 	mkdir -p $(BUILD_DIR)
 	$(NASM) -f elf64 $< -o $@
 
-$(BUILD_DIR)/idt_load.o: Kernel/IDT/idt_load.asm
+$(BUILD_DIR)/IDT.o: Kernel/IDT/IDT.asm
 	mkdir -p $(BUILD_DIR)
 	$(NASM) -f elf64 $< -o $@
 
