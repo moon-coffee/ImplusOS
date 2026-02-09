@@ -9,6 +9,7 @@ static IDT_Ptr idt_ptr;
 static isr_t irq_routines[MAX_IRQS] = {0};
 
 extern void isr_default(void);
+extern void isr_page_fault(void);
 extern void load_idt(IDT_Ptr* idt_ptr);
 
 void register_interrupt_handler(uint16_t irq, isr_t handler) {
@@ -48,6 +49,8 @@ void init_idt(void) {
     for (int i = 0; i < IDT_ENTRIES; i++) {
         set_interrupt_handler(i, isr_default);
     }
+
+    set_interrupt_handler(14, isr_page_fault);
     
     idt_ptr.limit = sizeof(idt) - 1;
     idt_ptr.base  = (uint64_t)&idt;
@@ -55,6 +58,26 @@ void init_idt(void) {
     load_idt(&idt_ptr);
     
     serial_write_string("[OS] [IDT] Successfully Initialize IDT.\n");
+}
+
+void page_fault_handler(uint64_t error_code, uint64_t rip, uint64_t rsp, uint64_t cr2) {
+    serial_write_string("[OS] [PF] Page fault\n");
+    serial_write_string("[OS] [PF] CR2: ");
+    serial_write_uint64(cr2);
+    serial_write_string("\n");
+    serial_write_string("[OS] [PF] RIP: ");
+    serial_write_uint64(rip);
+    serial_write_string("\n");
+    serial_write_string("[OS] [PF] RSP: ");
+    serial_write_uint64(rsp);
+    serial_write_string("\n");
+    serial_write_string("[OS] [PF] Error: ");
+    serial_write_uint64(error_code);
+    serial_write_string("\n");
+
+    while (1) {
+        __asm__("hlt");
+    }
 }
 
 void unregister_interrupt_handler(uint16_t irq) {

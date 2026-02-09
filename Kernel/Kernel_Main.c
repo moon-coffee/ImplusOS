@@ -274,9 +274,7 @@ void kernel_main(BOOT_INFO *boot_info) {
     serial_write_string("[OS] [USER] After fat32_read_file\n");
     
     serial_write_string("[OS] Userland ELF loaded successfully\n");
-
-    framebuffer_clear(0xFFFFFF);
-
+    
     entry_user_mode();
     serial_write_string("[OS] Userland entry success\n");
     __builtin_unreachable();

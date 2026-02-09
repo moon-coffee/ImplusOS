@@ -44,13 +44,13 @@ void init_paging(uint64_t framebuffer_base, uint32_t framebuffer_size) {
         required_entries = MAX_PDPT_ENTRIES;
     }
 
-    pml4[0] = ((uint64_t)pdpt) | PAGE_PRESENT | PAGE_RW;
+    pml4[0] = ((uint64_t)pdpt) | PAGE_PRESENT | PAGE_RW | PAGE_USER;
 
     for (uint64_t i = 0; i < required_entries; i++) {
-        pdpt[i] = ((uint64_t)pd[i]) | PAGE_PRESENT | PAGE_RW;
+        pdpt[i] = ((uint64_t)pd[i]) | PAGE_PRESENT | PAGE_RW | PAGE_USER;
         uint64_t base = i * GB;
         for (uint64_t j = 0; j < 512; j++) {
-            pd[i][j] = (base + (j * MB2)) | PAGE_PRESENT | PAGE_RW | PAGE_PS;
+            pd[i][j] = (base + (j * MB2)) | PAGE_PRESENT | PAGE_RW | PAGE_PS | PAGE_USER;
         }
     }
 
