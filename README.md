@@ -15,6 +15,7 @@ This repo is my homemade OS tree.
   sudo apt install -y parted
   sudo apt install -y qemu-system-x86
   sudo apt install -y gdb
+  ```
 
 2, Make
   make
