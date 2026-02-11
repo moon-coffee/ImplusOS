@@ -18,10 +18,11 @@ This repo is my homemade OS tree.
   ```
 
 2, Make
+  ```bash
   make
-  
   make run
-  
+  ```
+
 3, Complete
 
 # Target Platform
