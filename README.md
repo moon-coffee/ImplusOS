@@ -5,6 +5,9 @@ This repo is my homemade OS tree.
 
 <img width="960" height="540" alt="ImplusOS" src="https://github.com/moon-coffee/ImplusOS/blob/7d2ea7a94544d773c83d8c35323cbd7ac8e2e37d/Docs/Image/ImplusOS.png" />
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+
 # How to make?
 1, Install chaintools
   ```bash
