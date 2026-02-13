@@ -13,6 +13,6 @@
 ## License
 - Follow the MIT License. This is the license for this repository.
 - After distribution, we will not provide support for any reason (according to the MIT license).
-- After agreeing to the license, you can freely use, modify, and redistribute. Feel free to boil or bake it.
+- After agreeing to the license, you can freely use, modify, and redistribute.
 
 thank you very much.
