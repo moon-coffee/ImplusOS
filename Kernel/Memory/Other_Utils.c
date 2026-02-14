@@ -11,11 +11,24 @@ void free(void* ptr) {
     kfree(ptr);
 }
 
-void* memcpy(void* dst, const void* src, size_t n){
+void* memcpy(void* dst, const void* src, size_t n) {
     uint8_t* d = dst;
     const uint8_t* s = src;
     for(size_t i=0;i<n;i++) d[i]=s[i];
     return dst;
+}
+
+int memcmp(const void *s1, const void *s2, size_t n) {
+    const unsigned char *p1 = (const unsigned char *)s1;
+    const unsigned char *p2 = (const unsigned char *)s2;
+
+    for (size_t i = 0; i < n; i++) {
+        if (p1[i] != p2[i]) {
+            return (int)p1[i] - (int)p2[i];
+        }
+    }
+
+    return 0;
 }
 
 int strcmp(const char* a, const char* b){

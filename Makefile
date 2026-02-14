@@ -2,6 +2,7 @@
 
 ARCH := x86_64
 CC   ?= x86_64-linux-gnu-gcc
+CXX  ?= x86_64-linux-gnu-g++
 LD   ?= x86_64-linux-gnu-ld
 NASM ?= nasm
 
@@ -40,6 +41,12 @@ USERLAND_CFLAGS := \
 	-mno-red-zone -nostdlib -nostartfiles -nodefaultlibs \
 	-Wall -Wextra -MMD -MP
 
+USERLAND_CXXFLAGS := \
+	-ffreestanding -fno-stack-protector -fno-pic -fno-builtin \
+	-mno-red-zone -nostdlib -nostartfiles -nodefaultlibs \
+	-fno-exceptions -fno-rtti \
+	-Wall -Wextra -MMD -MP
+
 KERNEL_C_SRCS := \
 	Kernel/Kernel_Main.c \
 	Kernel/Memory/Memory_Main.c \
@@ -64,11 +71,12 @@ KERNEL_ASM_SRCS := \
 	Kernel/IDT/IDT.asm \
 	Kernel/Syscall/Syscall_Entry.asm
 
-USERLAND_C_SRC := \
+USERLAND_C_SRCS := \
 	Userland/Userland.c \
+	Userland/Application/PNG_Decoder/PNG_Decoder.c
 
 KERNEL_OBJS := $(KERNEL_C_SRCS:%.c=$(BUILD_DIR)/%.o) $(KERNEL_ASM_SRCS:%.asm=$(BUILD_DIR)/%.o)
-USERLAND_OBJS := $(USERLAND_C_SRC:%.c=$(BUILD_DIR)/%.o)
+USERLAND_OBJS := $(USERLAND_C_SRCS:%.c=$(BUILD_DIR)/%.o)
 
 all: $(BOOTX64_EFI) $(KERNEL_ELF) $(USERLAND_ELF)
 
@@ -106,6 +114,10 @@ $(KERNEL_ELF): $(KERNEL_OBJS)
 $(BUILD_DIR)/Userland/%.o: Userland/%.c
 	mkdir -p $(dir $@)
 	$(CC) $(USERLAND_CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/Userland/%.o: Userland/%.cpp
+	mkdir -p $(dir $@)
+	$(CXX) $(USERLAND_CXXFLAGS) -c $< -o $@
 
 $(USERLAND_ELF): $(USERLAND_OBJS)
 	mkdir -p $(dir $@)

@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "../Kernel/Memory/Other_Utils.h"
+#include "Application/PNG_Decoder/PNG_Decoder.h"
 
 #define SYSCALL_SERIAL_PUTCHAR  1ULL
 #define SYSCALL_SERIAL_PUTS     2ULL
@@ -16,6 +17,8 @@
 #define SYSCALL_FILE_CLOSE      23ULL
 #define SYSCALL_USER_KMALLOC    24ULL
 #define SYSCALL_USER_KFREE      25ULL
+#define SYSCALL_USER_MEMCPY     26ULL
+#define SYSCALL_USER_MEMCMP     27ULL
 
 static inline uint64_t syscall0(uint64_t num)
 {
@@ -132,6 +135,20 @@ void kfree(void* ptr) {
     (void)syscall1(SYSCALL_USER_KFREE, (uint64_t)ptr);
 }
 
+void* memcpy(void* dst, const void* src, size_t n) {
+    return (void*)syscall3(SYSCALL_USER_MEMCPY,
+                           (uint64_t)dst,
+                           (uint64_t)src,
+                           (uint64_t)n);
+}
+
+int memcmp(const void *s1, const void *s2, size_t n) {
+    return (int)syscall3(SYSCALL_USER_MEMCMP,
+                         (uint64_t)s1,
+                         (uint64_t)s2,
+                         (uint64_t)n);
+}
+
 __attribute__((noreturn))
 static void process_exit(void)
 {
@@ -204,8 +221,6 @@ void _start(void) {
         draw_present();
         kfree(rgba);
     }
-
     
-
     while(1) process_yield();
 }

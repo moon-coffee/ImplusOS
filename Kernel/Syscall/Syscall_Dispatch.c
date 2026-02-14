@@ -5,6 +5,7 @@
 #include "../ProcessManager/ProcessManager.h"
 #include "../Drivers/Display/Display_Main.h"
 #include "../Memory/Memory_Main.h"
+#include "../Memory/Other_Utils.h"
 #include <stdint.h>
 
 static void set_syscall_result(uint64_t saved_rsp, uint64_t value)
@@ -111,6 +112,40 @@ uint64_t syscall_dispatch(uint64_t saved_rsp,
         void *ptr = (void*)arg1;
         kfree(ptr);
         return 0;
+    }
+
+        case SYSCALL_USER_MEMCPY: {
+        void *dst = (void*)arg1;
+        const void *src = (const void*)arg2;
+        uint64_t n = arg3;
+
+        uint8_t *d = (uint8_t*)dst;
+        const uint8_t *s = (const uint8_t*)src;
+
+        for (uint64_t i = 0; i < n; i++) {
+            d[i] = s[i];
+        }
+
+        set_syscall_result(saved_rsp, (uint64_t)dst);
+        break;
+    }
+
+    case SYSCALL_USER_MEMCMP: {
+        const uint8_t *s1 = (const uint8_t*)arg1;
+        const uint8_t *s2 = (const uint8_t*)arg2;
+        uint64_t n = arg3;
+
+        int result = 0;
+
+        for (uint64_t i = 0; i < n; i++) {
+            if (s1[i] != s2[i]) {
+                result = (int)s1[i] - (int)s2[i];
+                break;
+            }
+        }
+
+        set_syscall_result(saved_rsp, (uint64_t)(int64_t)result);
+        break;
     }
 
     default:

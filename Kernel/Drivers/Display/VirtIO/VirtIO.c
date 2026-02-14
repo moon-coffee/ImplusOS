@@ -25,7 +25,7 @@
 #define VIRTIO_STATUS_FEATURES_OK 0x08
 #define VIRTIO_STATUS_FAILED      0x80
 
-#define VIRTIO_F_VERSION_1 (1u << 0) /* bit 32 => high dword bit 0 */
+#define VIRTIO_F_VERSION_1 (1u << 0)
 
 #define VIRTQ_DESC_F_NEXT  1
 #define VIRTQ_DESC_F_WRITE 2
